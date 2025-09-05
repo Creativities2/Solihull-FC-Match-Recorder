@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solihull FC Match Event Recorder — Football</title>
+<style>
+  :root {
+    --gap: 10px;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    margin: 0;
+    padding: 12px;
+    background: #f7f7f9;
+    color: #222;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap);
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0;
+  }
+  .card {
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1px solid #e6e6ef;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .row { display: grid; gap: var(--gap); }
+  .row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 760px) {
+    .row.cols-2, .row.cols-3, .row.cols-4 { grid-template-columns: 1fr; }
+  }
+  label {
+    font-size: 12px;
+    color: #555;
+    display: block;
+    margin-bottom: 6px;
+  }
+  input[type="text"], input[type="number"], textarea, select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #d9d9e3;
+    background: #fff;
+    font-size: 14px;
+  }
+  textarea { min-height: 88px; }
+  button {
+    padding: 10px 12px;
+    border: 1px solid #d9d9e3;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.02s ease;
+    touch-action: manipulation;
+  }
+  button:hover { background: #f2f2f7; }
+  button:active { transform: translateY(1px); }
+  button.primary { background: #111827; color: #fff; border-color: #111827; }
+  button.warn { background: #fff7f7; border-color: #ffd1d1; color: #b00020; }
+  button.success { background: #f0fff4; border-color: #b8f0c2; color: #0b7a2a; }
+  button.small { font-size: 12px; padding: 6px 8px; border-radius: 6px; }
+  .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media (max-width: 420px) {
+    .btn-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th, td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+    text-align: left;
+  }
+  th { background: #fafafa; position: sticky; top: 0; z-index: 1; }
+  .pill {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    display: inline-block;
+    border: 1px solid #e3e3ef;
+    background: #f5f5fb;
+  }
+  details summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .muted { color: #666; }
+  .right { text-align: right; }
+  .flex { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1 1 auto; }
+  .danger { color: #b00020; }
+  .sticky-footer {
+    position: sticky; bottom: 0; background: #fff; padding: 10px 12px; border: 1px solid #eee;
+    border-radius: 10px;
+  }
+  .notice { font-size: 12px; color: #555; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>⚽ Solihull FC Match Event Recorder</h1>
+    <div class="flex">
+      <button id="exportCsvBtn" class="small">Export CSV</button>
+      <button id="exportJsonBtn" class="small">Export JSON</button>
+      <label class="small muted" for="importJsonInput" style="margin-left:6px;">Import JSON</label>
+      <input id="importJsonInput" type="file" accept="application/json" style="font-size:12px;">
+    </div>
+  </header>
+
+  <section class="card">
+    <details open>
+      <summary>Match & Squad Settings</summary>
+      <div class="row cols-3">
+        <div>
+          <label for="ourTeam">Our team</label>
+          <input id="ourTeam" type="text" placeholder="e.g., Solihull FC U11 Maroons">
+        </div>
+        <div>
+          <label for="oppTeam">Opposition</label>
+          <input id="oppTeam" type="text" placeholder="e.g., Crusaders U11 Greens">
+        </div>
+        <div>
+          <label for="venue">Venue</label>
+          <input id="venue" type="text" placeholder="e.g., Sils Pitch 2">
+        </div>
+      </div>
+      <div class="row cols-2" style="margin-top:10px;">
+        <div>
+          <label for="squadText">Squad list (one per line — number optional)<br><span class="muted">Examples: "1 Leo", "7 - Ted", "Luca #10"</span></label>
+          <textarea id="squadText" placeholder="1 Leo&#10;2 Max&#10;3 Ethen&#10;4 Gabe&#10;5 Ben&#10;6 Will&#10;7 Ted&#10;8 Albie&#10;9 Luca&#10;10 Hartley;11 Vinnie&#10;12 Milo"></textarea>
+          <div class="flex" style="margin-top:8px;">
+            <button id="applySquadBtn" class="small">Apply squad to selectors</button>
+            <span class="notice">Tip: You can change this any time — it's saved automatically.</span>
+          </div>
+        </div>
+        <div>
+          <div class="row cols-2">
+            <div>
+              <label for="matchDate">Match date</label>
+              <input id="matchDate" type="text" placeholder="YYYY-MM-DD">
+            </div>
+            <div>
+              <label for="kickoff">Kick-off (local)</label>
+              <input id="kickoff" type="text" placeholder="10:00">
+            </div>
+          </div>
+          <div class="row cols-2" style="margin-top:10px;">
+            <div class="flex">
+              <div class="grow">
+                <label for="halfLength">Half length (mins)</label>
+                <input id="halfLength" type="number" min="5" max="35" value="30">
+              </div>
+              <div class="grow">
+                <label for="continuousMins">Minute mode</label>
+                <select id="continuousMins">
+                  <option value="continuous" selected>0–60 continuous</option>
+                  <option value="perHalf">0–30 each half</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label for="refName">Referee (optional)</label>
+              <input id="refName" type="text" placeholder="Name">
+            </div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="card">
+    <div class="row cols-3">
+      <div>
+        <label>Clock</label>
+        <div class="flex">
+          <button id="startBtn" class="primary">Start</button>
+          <button id="pauseBtn">Pause</button>
+          <button id="resetBtn">Reset</button>
+          <button id="halfTimeBtn">Half-time</button>
+        </div>
+        <div class="flex" style="margin-top:8px;">
+          <div class="pill" id="clockDisplay">00:00</div>
+          <div class="pill" id="halfDisplay">1st half</div>
+          <div class="pill" id="minuteDisplay">Min 0</div>
+          <input id="setMinuteInput" type="number" min="0" max="130" placeholder="Set minute">
+          <button id="setMinuteBtn" class="small">Set</button>
+        </div>
+      </div>
+      <div>
+        <label>Player selection</label>
+        <div class="row cols-2">
+          <div>
+            <select id="playerSelect"></select>
+          </div>
+          <div>
+            <select id="playerSelect2">
+              <option value="">— Secondary player (assist/sub etc) —</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex" style="margin-top:8px;">
+          <input id="detailInput" type="text" class="grow" placeholder="Detail / note (optional, e.g., 'Penalty, Left foot, edge of box')">
+          <button id="addNoteBtn" class="small">Add Note</button>
+        </div>
+      </div>
+      <div>
+        <label>Quick events</label>
+        <div class="btn-grid">
+          <button data-ev="GOAL_US" class="success">Goal (Us)</button>
+          <button data-ev="ASSIST">Assist</button>
+          <button data-ev="GOAL_OPP" class="warn">Opp Goal</button>
+          <button data-ev="YELLOW">Yellow</button>
+          <button data-ev="RED" class="warn">Red</button>
+          <button data-ev="SUB_ON">Sub On</button>
+          <button data-ev="SUB_OFF">Sub Off</button>
+          <button data-ev="SHOT_ON">Shot On</button>
+          <button data-ev="SHOT_OFF">Shot Off</button>
+          <button data-ev="SAVE">Save</button>
+          <button data-ev="FOUL_WON">Foul Won</button>
+          <button data-ev="FOUL_CONC">Foul Conceded</button>
+          <button data-ev="CORNER">Corner</button>
+          <button data-ev="OFFSIDE">Offside</button>
+          <button data-ev="OWN_GOAL" class="warn">Own Goal</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="flex" style="justify-content: space-between;">
+      <div><strong>Event Log</strong> <span class="muted" id="eventCount">(0)</span></div>
+      <div class="flex">
+        <button id="undoBtn" class="small">Undo last</button>
+        <button id="clearMatchBtn" class="small danger">Clear match</button>
+      </div>
+    </div>
+    <div style="max-height: 50vh; overflow: auto; margin-top: 8px;">
+      <table id="eventTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Time</th>
+            <th>Half</th>
+            <th>Minute</th>
+            <th>Team</th>
+            <th>Player</th>
+            <th>Event</th>
+            <th>Detail</th>
+            <th class="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="sticky-footer notice">
+      Data auto-saves to your browser. Export after the match for your records.
+    </div>
+  </section>
+
+<script>
+(function(){
+  // ====== State ======
+  const state = {
+    ourTeam: '',
+    oppTeam: '',
+    venue: '',
+    matchDate: '',
+    kickoff: '',
+    halfLength: 30,
+    continuousMins: 'continuous',
+    refName: '',
+    squadText: '',
+    squad: [],
+    events: [],
+    half: 1,
+    // clock
+    running: false,
+    startEpoch: 0,
+    elapsedBefore: 0, // ms
+    manualMinuteOffset: 0, // used when manually setting minute
+  };
+
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+  // Elements
+  const ourTeamEl = $('#ourTeam');
+  const oppTeamEl = $('#oppTeam');
+  const venueEl = $('#venue');
+  const matchDateEl = $('#matchDate');
+  const kickoffEl = $('#kickoff');
+  const halfLengthEl = $('#halfLength');
+  const continuousMinsEl = $('#continuousMins');
+  const refNameEl = $('#refName');
+  const squadTextEl = $('#squadText');
+  const applySquadBtn = $('#applySquadBtn');
+
+  const startBtn = $('#startBtn');
+  const pauseBtn = $('#pauseBtn');
+  const resetBtn = $('#resetBtn');
+  const halfTimeBtn = $('#halfTimeBtn');
+  const clockDisplay = $('#clockDisplay');
+  const halfDisplay = $('#halfDisplay');
+  const minuteDisplay = $('#minuteDisplay');
+  const setMinuteInput = $('#setMinuteInput');
+  const setMinuteBtn = $('#setMinuteBtn');
+
+  const playerSelect = $('#playerSelect');
+  const playerSelect2 = $('#playerSelect2');
+  const detailInput = $('#detailInput');
+  const addNoteBtn = $('#addNoteBtn');
+
+  const eventTableBody = $('#eventTable tbody');
+  const eventCount = $('#eventCount');
+  const undoBtn = $('#undoBtn');
+  const clearMatchBtn = $('#clearMatchBtn');
+  const exportCsvBtn = $('#exportCsvBtn');
+  const exportJsonBtn = $('#exportJsonBtn');
+  const importJsonInput = $('#importJsonInput');
+
+  // ====== Helpers ======
+  function save() {
+    try {
+      localStorage.setItem('mer_state_v1', JSON.stringify(state));
+    } catch(e) { console.warn('Save failed', e); }
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem('mer_state_v1');
+      if (!raw) return;
+      const obj = JSON.parse(raw);
+      Object.assign(state, obj);
+    } catch(e) { console.warn('Load failed', e); }
+  }
+
+  function fmt2(n){ return n.toString().padStart(2,'0'); }
+  function msToClock(ms) {
+    const s = Math.floor(ms/1000);
+    const m = Math.floor(s/60);
+    const sec = s % 60;
+    return `${fmt2(m)}:${fmt2(sec)}`;
+  }
+
+  function now(){ return Date.now(); }
+
+  function currentElapsedMs() {
+    return state.running ? (now() - state.startEpoch) + state.elapsedBefore : state.elapsedBefore;
+  }
+
+  function currentMinuteRaw() {
+    // base minute purely from elapsed
+    return Math.floor(currentElapsedMs() / 60000);
+  }
+
+  function currentMinuteDisplay() {
+    const base = currentMinuteRaw();
+    if (state.continuousMins === 'continuous') {
+      return state.half === 1 ? base : base + 45;
+    } else {
+      return base;
+    }
+  }
+
+  function updateClockUI(){
+    clockDisplay.textContent = msToClock(currentElapsedMs());
+    minuteDisplay.textContent = `Min ${currentMinuteDisplay()}`;
+    halfDisplay.textContent = state.half === 1 ? '1st half' : '2nd half';
+  }
+
+  function tick() {
+    updateClockUI();
+    if (state.running) requestAnimationFrame(tick);
+  }
+
+  function startClock(){
+    if (state.running) return;
+    state.running = true;
+    state.startEpoch = now();
+    tick();
+    save();
+  }
+  function pauseClock(){
+    if (!state.running) return;
+    state.running = false;
+    state.elapsedBefore = currentElapsedMs();
+    updateClockUI();
+    save();
+  }
+  function resetClock(){
+    state.running = false;
+    state.startEpoch = 0;
+    state.elapsedBefore = 0;
+    updateClockUI();
+    save();
+  }
+  function setMinute(min){
+    if (isNaN(min) || min < 0) return;
+    // convert desired display minute to elapsed ms depending on mode + half
+    let baseMin = min;
+    if (state.continuousMins === 'continuous' && state.half === 2) {
+      baseMin = Math.max(0, min - 45);
+    }
+    const ms = baseMin * 60000;
+    state.elapsedBefore = ms;
+    state.startEpoch = now();
+    updateClockUI();
+    save();
+  }
+
+  function parseSquad(text){
+    const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    const squad = [];
+    for (const line of lines) {
+      let num = '';
+      let name = line;
+      // Extract number patterns: "7 - Name", "7 Name", "Name #7"
+      const match1 = line.match(/^\s*(\d{1,3})\s*[-.: ]\s*(.+)$/);
+      const match2 = line.match(/^\s*(\d{1,3})\s+(.+)$/);
+      const match3 = line.match(/^(.+?)\s*[#№]\s*(\d{1,3})\s*$/i);
+      if (match1) { num = match1[1]; name = match1[2]; }
+      else if (match2) { num = match2[1]; name = match2[2]; }
+      else if (match3) { num = match3[2]; name = match3[1]; }
+      name = name.replace(/\s+/g,' ').trim();
+      squad.push({ number: num, name });
+    }
+    return squad;
+  }
+
+  function applySquadToSelectors(){
+    // main selector
+    const makeOptions = (includeEmpty=false) => {
+      const frag = document.createDocumentFragment();
+      if (includeEmpty) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '— Select player —';
+        frag.appendChild(opt);
+      }
+      state.squad.forEach((p, idx) => {
+        const opt = document.createElement('option');
+        const label = p.number ? `${p.number} — ${p.name}` : p.name;
+        opt.value = p.name;
+        opt.textContent = label;
+        frag.appendChild(opt);
+      });
+      return frag;
+    };
+    playerSelect.innerHTML = '';
+    playerSelect.appendChild(makeOptions(true));
+
+    playerSelect2.innerHTML = '';
+    const empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = '— Secondary player (assist/sub etc) —';
+    playerSelect2.appendChild(empty);
+    playerSelect2.appendChild(makeOptions(false));
+  }
+
+  function ensurePlayerSelected(){
+    const val = playerSelect.value;
+    if (!val) {
+      alert('Select a player first.');
+      return false;
+    }
+    return true;
+  }
+
+  function addEvent(evType){
+    const timeISO = new Date().toISOString();
+    const minute = currentMinuteDisplay();
+    let team = 'Us';
+    let player = '';
+    let secondary = '';
+    let detail = (detailInput.value || '').trim();
+
+    switch(evType){
+      case 'GOAL_US':
+        if (!ensurePlayerSelected()) return;
+        player = playerSelect.value;
+        break;
+      case 'ASSIST':
+        // Using secondary player as assist provider
+        if (!ensurePlayerSelected()) return;
+        if (!playerSelect2.value) {
+          alert('Select the assist provider in the secondary selector.');
+          return;
+        }
+        player = playerSelect.value;      // scorer
+        secondary = playerSelect2.value;  // assist
+        if (!detail) detail = 'Assist';
+        break;
+      case 'GOAL_OPP':
+        team = 'Opposition';
+        player = detail || 'Unknown';
+        if (!detail) detail = 'Opposition goal';
+        break;
+      case 'YELLOW':
+      case 'RED':
+      case 'SHOT_ON':
+      case 'SHOT_OFF':
+      case 'SAVE':
+      case 'FOUL_WON':
+      case 'FOUL_CONC':
+      case 'CORNER':
+      case 'OFFSIDE':
+      case 'OWN_GOAL':
+        if (!ensurePlayerSelected()) return;
+        player = playerSelect.value;
+        break;
+      case 'SUB_ON':
+      case 'SUB_OFF':
+        if (!ensurePlayerSelected()) return;
+        player = playerSelect.value;
+        if (playerSelect2.value) secondary = playerSelect2.value;
+        if (!detail) detail = evType === 'SUB_ON' ? 'Replaced' : 'Replaced by';
+        break;
+      case 'NOTE':
+        // free text note, team blank
+        team = '';
+        player = playerSelect.value || '';
+        break;
+      default:
+        return;
+    }
+
+    const entry = {
+      id: (state.events.length ? state.events[state.events.length-1].id + 1 : 1),
+      timeISO,
+      half: state.half,
+      minute,
+      team,
+      player,
+      secondary,
+      type: evType,
+      detail,
+    };
+    state.events.push(entry);
+    renderEvents();
+    detailInput.value = '';
+    save();
+  }
+
+  function renderEvents(){
+    eventTableBody.innerHTML = '';
+    state.events.forEach((ev, idx) => {
+      const tr = document.createElement('tr');
+      const teamLabel = ev.team || '—';
+      const typeLabel = typeToLabel(ev.type);
+      const playerLabel = ev.secondary ? `${ev.player}  ⇄  ${ev.secondary}` : (ev.player || '—');
+
+      tr.innerHTML = `
+        <td>${idx+1}</td>
+        <td><span class="muted" title="${ev.timeISO}">${new Date(ev.timeISO).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span></td>
+        <td>${ev.half === 1 ? '1st' : '2nd'}</td>
+        <td>${ev.minute}</td>
+        <td>${teamLabel}</td>
+        <td>${escapeHtml(playerLabel)}</td>
+        <td><span class="pill">${typeLabel}</span></td>
+        <td>${escapeHtml(ev.detail || '')}</td>
+        <td class="right">
+          <button class="small" data-act="del" data-id="${ev.id}">Delete</button>
+        </td>
+      `;
+      eventTableBody.appendChild(tr);
+    });
+    eventCount.textContent = `(${state.events.length})`;
+  }
+
+  function typeToLabel(t){
+    const map = {
+      GOAL_US: 'Goal (Us)',
+      ASSIST: 'Assist',
+      GOAL_OPP: 'Opp Goal',
+      YELLOW: 'Yellow',
+      RED: 'Red',
+      SUB_ON: 'Sub On',
+      SUB_OFF: 'Sub Off',
+      SHOT_ON: 'Shot On',
+      SHOT_OFF: 'Shot Off',
+      SAVE: 'Save',
+      FOUL_WON: 'Foul Won',
+      FOUL_CONC: 'Foul Conceded',
+      CORNER: 'Corner',
+      OFFSIDE: 'Offside',
+      OWN_GOAL: 'Own Goal',
+      NOTE: 'Note',
+    };
+    return map[t] || t;
+  }
+
+  function escapeHtml(str){
+    return (str||'').replace(/[&<>"']/g, m => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[m]));
+  }
+
+  function deleteEventById(id){
+    const i = state.events.findIndex(e => e.id == id);
+    if (i >= 0) {
+      state.events.splice(i,1);
+      renderEvents();
+      save();
+    }
+  }
+
+  function undoLast(){
+    state.events.pop();
+    renderEvents();
+    save();
+  }
+
+  function clearMatch(){
+    if (!confirm('Clear all events? This cannot be undone.')) return;
+    state.events = [];
+    renderEvents();
+    save();
+  }
+
+  function exportCSV(){
+    const headers = ['#','Time','Half','Minute','Team','Player','Secondary','Event','Detail','Our Team','Opposition','Venue','Date','Kickoff','Ref','Half Length','Mode'];
+    const rows = state.events.map((ev, idx) => [
+      idx+1,
+      new Date(ev.timeISO).toISOString(),
+      ev.half,
+      ev.minute,
+      ev.team,
+      ev.player,
+      ev.secondary,
+      typeToLabel(ev.type),
+      ev.detail || '',
+      state.ourTeam,
+      state.oppTeam,
+      state.venue,
+      state.matchDate,
+      state.kickoff,
+      state.refName,
+      state.halfLength,
+      state.continuousMins
+    ]);
+    const all = [headers, ...rows];
+    const csv = all.map(r => r.map(cell => {
+      if (cell === null || cell === undefined) return '';
+      const s = String(cell);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+    }).join(',')).join('\n');
+    downloadBlob(new Blob([csv], {type: 'text/csv;charset=utf-8'}), `match-events-${Date.now()}.csv`);
+  }
+
+  function exportJSON(){
+    const out = {
+      meta: {
+        ourTeam: state.ourTeam,
+        oppTeam: state.oppTeam,
+        venue: state.venue,
+        matchDate: state.matchDate,
+        kickoff: state.kickoff,
+        refName: state.refName,
+        halfLength: state.halfLength,
+        continuousMins: state.continuousMins,
+        exportedAt: new Date().toISOString(),
+      },
+      squad: state.squad,
+      events: state.events,
+    };
+    downloadBlob(new Blob([JSON.stringify(out, null, 2)], {type: 'application/json'}), `match-events-${Date.now()}.json`);
+  }
+
+  function downloadBlob(blob, filename){
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 100);
+  }
+
+  function importJSONFile(file){
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const obj = JSON.parse(e.target.result);
+        if (obj.meta) {
+          state.ourTeam = obj.meta.ourTeam || state.ourTeam;
+          state.oppTeam = obj.meta.oppTeam || state.oppTeam;
+          state.venue = obj.meta.venue || state.venue;
+          state.matchDate = obj.meta.matchDate || state.matchDate;
+          state.kickoff = obj.meta.kickoff || state.kickoff;
+          state.refName = obj.meta.refName || state.refName;
+          state.halfLength = obj.meta.halfLength || state.halfLength;
+          state.continuousMins = obj.meta.continuousMins || state.continuousMins;
+        }
+        state.squad = Array.isArray(obj.squad) ? obj.squad : state.squad;
+        state.events = Array.isArray(obj.events) ? obj.events : state.events;
+        // Update UI
+        syncStateToUI();
+        applySquadToSelectors();
+        renderEvents();
+        save();
+        alert('Import successful.');
+      } catch(err) {
+        alert('Import failed: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ====== UI Wiring ======
+  function syncUIToState(){
+    state.ourTeam = ourTeamEl.value.trim();
+    state.oppTeam = oppTeamEl.value.trim();
+    state.venue = venueEl.value.trim();
+    state.matchDate = matchDateEl.value.trim();
+    state.kickoff = kickoffEl.value.trim();
+    state.halfLength = parseInt(halfLengthEl.value, 10) || 25;
+    state.continuousMins = continuousMinsEl.value;
+    state.refName = refNameEl.value.trim();
+    state.squadText = squadTextEl.value;
+    state.squad = parseSquad(state.squadText);
+    save();
+  }
+
+  function syncStateToUI(){
+    ourTeamEl.value = state.ourTeam || '';
+    oppTeamEl.value = state.oppTeam || '';
+    venueEl.value = state.venue || '';
+    matchDateEl.value = state.matchDate || '';
+    kickoffEl.value = state.kickoff || '';
+    halfLengthEl.value = state.halfLength || 25;
+    continuousMinsEl.value = state.continuousMins || 'continuous';
+    refNameEl.value = state.refName || '';
+    squadTextEl.value = state.squadText || '';
+    updateClockUI();
+  }
+
+  // Live save on inputs
+  [ourTeamEl, oppTeamEl, venueEl, matchDateEl, kickoffEl, halfLengthEl, continuousMinsEl, refNameEl, squadTextEl].forEach(el => {
+    el.addEventListener('input', () => {
+      if (el === squadTextEl) {
+        // do not immediately overwrite selectors until "Apply" is hit
+        state.squadText = squadTextEl.value;
+        save();
+      } else {
+        syncUIToState();
+      }
+    });
+  });
+
+  applySquadBtn.addEventListener('click', () => {
+    syncUIToState();
+    applySquadToSelectors();
+  });
+
+  startBtn.addEventListener('click', startClock);
+  pauseBtn.addEventListener('click', pauseClock);
+  resetBtn.addEventListener('click', resetClock);
+  halfTimeBtn.addEventListener('click', () => {
+    state.half = state.half === 1 ? 2 : 1;
+    // Optionally reset the visible minute to 0 at half if perHalf mode
+    if (state.continuousMins === 'perHalf') resetClock();
+    updateClockUI();
+    save();
+  });
+
+  setMinuteBtn.addEventListener('click', () => {
+    const v = parseInt(setMinuteInput.value, 10);
+    if (!isNaN(v)) setMinute(v);
+  });
+
+  addNoteBtn.addEventListener('click', () => addEvent('NOTE'));
+
+  $$('.btn-grid button').forEach(btn => {
+    btn.addEventListener('click', () => addEvent(btn.getAttribute('data-ev')));
+  });
+
+  eventTableBody.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-act="del"]');
+    if (!btn) return;
+    deleteEventById(btn.getAttribute('data-id'));
+  });
+
+  undoBtn.addEventListener('click', undoLast);
+  clearMatchBtn.addEventListener('click', clearMatch);
+
+  exportCsvBtn.addEventListener('click', exportCSV);
+  exportJsonBtn.addEventListener('click', exportJSON);
+  importJsonInput.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (file) importJSONFile(file);
+    e.target.value = '';
+  });
+
+  // ====== Init ======
+  load();
+  // If first time, preload some placeholders
+  if (!state.squadText) {
+    state.squadText = [
+      '1 Leo',
+      '2 Max',
+      '3 Ethen',
+      '4 Gabe',
+      '5 Ben',
+      '6 Will',
+      '7 Ted',
+      '8 Albie',
+      '9 Milo',
+      '10 Max'
+    ].join('\n');
+    state.squad = parseSquad(state.squadText);
+  } else if (!state.squad || !state.squad.length) {
+    state.squad = parseSquad(state.squadText);
+  }
+  syncStateToUI();
+  applySquadToSelectors();
+  renderEvents();
+  save();
+})();
+</script>
+</body>
+</html>
